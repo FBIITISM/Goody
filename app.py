@@ -1,1 +1,7 @@
-from flask import Flask, jsonify\n\napp = Flask(__name__)\n\n@app.route('/')\ndef home():\n    return jsonify({'message': 'Hello, World!'})\n\nif __name__ == '__main__':\n    app.run(debug=True)
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Welcome to Goody!"
