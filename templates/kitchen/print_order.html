@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Print Order #{{ order.order_number }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 350px; margin: 20px auto; font-size: 13px; }
+    h1 { font-size: 1.4rem; text-align: center; margin-bottom: 4px; }
+    .sub { text-align: center; color: #666; margin-bottom: 16px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+    th, td { padding: 4px 6px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background: #f4f4f4; }
+    .total { text-align: right; font-weight: bold; font-size: 1.1rem; margin: 8px 0; }
+    .qr-section { text-align: center; margin: 16px 0; }
+    .notes { background: #fff3cd; padding: 6px 10px; border-radius: 4px; font-size: 12px; margin-bottom: 8px; }
+    .footer { text-align: center; color: #888; font-size: 11px; margin-top: 16px; border-top: 1px dashed #ccc; padding-top: 8px; }
+    @media print { button { display: none; } }
+  </style>
+</head>
+<body>
+  <h1>🍔 Goody Kitchen</h1>
+  <div class="sub">Order Receipt</div>
+
+  <table>
+    <tr><th>Order #</th><td>{{ order.order_number }}</td></tr>
+    <tr><th>Customer</th><td>{{ order.customer_name }}</td></tr>
+    {% if order.customer_phone %}<tr><th>Phone</th><td>{{ order.customer_phone }}</td></tr>{% endif %}
+    <tr><th>Time</th><td>{{ order.created_at.strftime('%d %b %Y, %H:%M') }}</td></tr>
+    <tr><th>Status</th><td><strong>{{ order.status|upper }}</strong></td></tr>
+  </table>
+
+  {% if order.notes %}
+  <div class="notes">⚠️ Notes: {{ order.notes }}</div>
+  {% endif %}
+
+  <table>
+    <thead><tr><th>Item</th><th>Qty</th><th>Price</th></tr></thead>
+    <tbody>
+      {% for item in order.get_items() %}
+      <tr>
+        <td>{{ item.name }}</td>
+        <td>{{ item.qty }}</td>
+        <td>${{ "%.2f"|format(item.price * item.qty) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="total">Total: ${{ "%.2f"|format(order.total_price) }}</div>
+
+  {% if qr_b64 %}
+  <div class="qr-section">
+    <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" style="width:160px;height:160px;" />
+    <p style="font-size:11px;color:#666;">Scan to verify delivery</p>
+  </div>
+  {% endif %}
+
+  <div class="footer">Thank you for choosing Goody Kitchen! 😊</div>
+
+  <div style="text-align:center;margin-top:16px;">
+    <button onclick="window.print()" style="padding:8px 20px;font-size:14px;cursor:pointer;">🖨️ Print</button>
+  </div>
+</body>
+</html>

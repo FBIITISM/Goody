@@ -1,0 +1,45 @@
+{% set status_colors = {'received': 'info', 'preparing': 'warning', 'ready': 'success', 'delivered': 'secondary'} %}
+{% set status_icons = {'received': 'bi-inbox', 'preparing': 'bi-fire', 'ready': 'bi-check-circle', 'delivered': 'bi-bag-check'} %}
+<div class="col-12 col-md-6 col-lg-4">
+  <div class="card shadow kitchen-order-card border-{{ status_colors.get(order.status, 'secondary') }}">
+    <div class="card-header bg-{{ status_colors.get(order.status, 'secondary') }} text-white d-flex justify-content-between">
+      <span class="fw-bold"><i class="bi {{ status_icons.get(order.status, 'bi-receipt') }}"></i> #{{ order.order_number }}</span>
+      <small>{{ order.created_at.strftime('%H:%M') }}</small>
+    </div>
+    <div class="card-body py-2">
+      <h6 class="mb-1 fw-bold">{{ order.customer_name }}</h6>
+      {% if order.customer_phone %}<p class="text-muted small mb-1"><i class="bi bi-telephone"></i> {{ order.customer_phone }}</p>{% endif %}
+      <ul class="list-unstyled small mb-2">
+        {% for item in order.get_items() %}
+        <li><span class="badge bg-light text-dark me-1">{{ item.qty }}×</span>{{ item.name }}</li>
+        {% endfor %}
+      </ul>
+      {% if order.notes %}<p class="text-warning small mb-1"><i class="bi bi-sticky"></i> <em>{{ order.notes }}</em></p>{% endif %}
+      <p class="fw-bold mb-0 text-brand">${{ "%.2f"|format(order.total_price) }}</p>
+    </div>
+    <div class="card-footer bg-transparent d-flex gap-2 flex-wrap">
+      {% if order.status == 'received' %}
+      <form method="post" action="{{ url_for('kitchen_update_order', order_id=order.id) }}" class="d-inline">
+        <input type="hidden" name="status" value="preparing">
+        <button class="btn btn-warning btn-sm"><i class="bi bi-fire"></i> Prepare</button>
+      </form>
+      {% elif order.status == 'preparing' %}
+      <form method="post" action="{{ url_for('kitchen_update_order', order_id=order.id) }}" class="d-inline">
+        <input type="hidden" name="status" value="ready">
+        <button class="btn btn-success btn-sm"><i class="bi bi-check-circle"></i> Mark Ready</button>
+      </form>
+      {% elif order.status == 'ready' %}
+      <form method="post" action="{{ url_for('kitchen_update_order', order_id=order.id) }}" class="d-inline">
+        <input type="hidden" name="status" value="delivered">
+        <button class="btn btn-secondary btn-sm"><i class="bi bi-bag-check"></i> Delivered</button>
+      </form>
+      {% endif %}
+      <a href="{{ url_for('kitchen_order_detail', order_id=order.id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-eye"></i>
+      </a>
+      <a href="{{ url_for('kitchen_print_order', order_id=order.id) }}" class="btn btn-outline-dark btn-sm" target="_blank">
+        <i class="bi bi-printer"></i>
+      </a>
+    </div>
+  </div>
+</div>

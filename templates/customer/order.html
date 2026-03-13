@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Order #{{ order.order_number }} – Goody{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-body text-center py-5">
+        {% set status_icons = {'received': '📥', 'preparing': '👨‍🍳', 'ready': '🎉', 'delivered': '✅'} %}
+        {% set status_labels = {'received': 'Order Received', 'preparing': 'Being Prepared', 'ready': 'Ready for Pickup!', 'delivered': 'Delivered'} %}
+        {% set status_colors = {'received': 'info', 'preparing': 'warning', 'ready': 'success', 'delivered': 'secondary'} %}
+
+        <div class="fs-1 mb-2">{{ status_icons.get(order.status, '📦') }}</div>
+        <h2 class="fw-bold">{{ status_labels.get(order.status, order.status) }}</h2>
+        <p class="text-muted mb-3">Order #{{ order.order_number }}</p>
+        <span class="badge bg-{{ status_colors.get(order.status, 'secondary') }} fs-6">{{ order.status|upper }}</span>
+
+        {% if order.status == 'ready' %}
+        <div class="alert alert-success mt-3">
+          <i class="bi bi-bell-fill"></i> <strong>Your order is ready!</strong> Please come to the counter.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Status Progress -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          {% set steps = [('received','📥','Received'), ('preparing','👨‍🍳','Preparing'), ('ready','🎉','Ready'), ('delivered','✅','Done')] %}
+          {% set step_list = ['received', 'preparing', 'ready', 'delivered'] %}
+          {% set current_idx = step_list.index(order.status) if order.status in step_list else 0 %}
+          {% for key, icon, label in steps %}
+          {% set i = loop.index0 %}
+          <div class="text-center flex-fill">
+            <div class="fs-4 {% if i <= current_idx %}opacity-100{% else %}opacity-25{% endif %}">{{ icon }}</div>
+            <small class="{% if i == current_idx %}fw-bold text-brand{% elif i < current_idx %}text-muted{% else %}text-muted opacity-50{% endif %}">{{ label }}</small>
+          </div>
+          {% if not loop.last %}
+          <div class="flex-fill border-top border-2 {% if i < current_idx %}border-success{% else %}border-secondary opacity-25{% endif %}" style="height:2px;margin-top:-12px;"></div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Order Details -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-bold"><i class="bi bi-receipt"></i> Order Details</div>
+      <div class="card-body">
+        <p><strong>Customer:</strong> {{ order.customer_name }}</p>
+        {% if order.notes %}
+        <p><strong>Notes:</strong> {{ order.notes }}</p>
+        {% endif %}
+        <table class="table table-sm">
+          <thead><tr><th>Item</th><th>Qty</th><th class="text-end">Price</th></tr></thead>
+          <tbody>
+            {% for item in order.get_items() %}
+            <tr>
+              <td>{{ item.name }}</td>
+              <td>{{ item.qty }}</td>
+              <td class="text-end">${{ "%.2f"|format(item.price * item.qty) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr class="fw-bold"><td colspan="2">Total</td><td class="text-end text-brand">${{ "%.2f"|format(order.total_price) }}</td></tr>
+          </tfoot>
+        </table>
+        <small class="text-muted">Placed: {{ order.created_at.strftime('%d %b %Y, %H:%M') }}</small>
+      </div>
+    </div>
+
+    <!-- QR Code -->
+    {% if qr_b64 %}
+    <div class="card shadow-sm mb-4">
+      <div class="card-header fw-bold"><i class="bi bi-qr-code"></i> Order QR Code</div>
+      <div class="card-body text-center">
+        <img src="data:image/png;base64,{{ qr_b64 }}" alt="Order QR" class="img-fluid" style="max-width:200px" />
+        <p class="text-muted small mt-2">Show this QR to kitchen staff when collecting your order</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('customer_menu') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-grid"></i> Back to Menu
+      </a>
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('order_history') }}" class="btn btn-outline-primary">
+        <i class="bi bi-clock-history"></i> Order History
+      </a>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Live status polling (every 10 seconds)
+  {% if order.status not in ['delivered'] %}
+  let lastStatus = '{{ order.status }}';
+  setInterval(async () => {
+    try {
+      const res = await fetch('/order/{{ order.order_number }}/status-json');
+      const data = await res.json();
+      if (data.status !== lastStatus) {
+        window.location.reload();
+      }
+    } catch(e) {}
+  }, 10000);
+  {% endif %}
+</script>
+{% endblock %}

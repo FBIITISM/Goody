@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Order #{{ order.order_number }} – Kitchen{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="fw-bold mb-0">Order #{{ order.order_number }}</h3>
+      <a href="{{ url_for('kitchen_dashboard') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Back
+      </a>
+    </div>
+
+    {% set status_colors = {'received': 'info', 'preparing': 'warning', 'ready': 'success', 'delivered': 'secondary'} %}
+    <div class="alert alert-{{ status_colors.get(order.status, 'secondary') }}">
+      Status: <strong>{{ order.status|upper }}</strong>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <p><strong>Customer:</strong> {{ order.customer_name }}</p>
+        {% if order.customer_email %}<p><strong>Email:</strong> {{ order.customer_email }}</p>{% endif %}
+        {% if order.customer_phone %}<p><strong>Phone:</strong> {{ order.customer_phone }}</p>{% endif %}
+        {% if order.notes %}<p><strong>Notes:</strong> <em class="text-warning">{{ order.notes }}</em></p>{% endif %}
+        <p><strong>Placed:</strong> {{ order.created_at.strftime('%d %b %Y, %H:%M') }}</p>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-header fw-bold">Items</div>
+      <div class="card-body p-0">
+        <table class="table mb-0">
+          <thead class="table-light"><tr><th>Item</th><th>Qty</th><th class="text-end">Subtotal</th></tr></thead>
+          <tbody>
+            {% for item in order.get_items() %}
+            <tr>
+              <td>{{ item.name }}</td>
+              <td>{{ item.qty }}</td>
+              <td class="text-end">${{ "%.2f"|format(item.price * item.qty) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr class="fw-bold"><td colspan="2">Total</td><td class="text-end text-brand">${{ "%.2f"|format(order.total_price) }}</td></tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    {% if qr_b64 %}
+    <div class="card shadow-sm mb-3">
+      <div class="card-body text-center">
+        <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR" style="max-width:180px" />
+        <p class="text-muted small mt-2">Order QR Code</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="d-flex gap-2 flex-wrap">
+      {% if order.status == 'received' %}
+      <form method="post" action="{{ url_for('kitchen_update_order', order_id=order.id) }}">
+        <input type="hidden" name="status" value="preparing">
+        <button class="btn btn-warning"><i class="bi bi-fire"></i> Start Preparing</button>
+      </form>
+      {% elif order.status == 'preparing' %}
+      <form method="post" action="{{ url_for('kitchen_update_order', order_id=order.id) }}">
+        <input type="hidden" name="status" value="ready">
+        <button class="btn btn-success"><i class="bi bi-check-circle"></i> Mark Ready</button>
+      </form>
+      {% elif order.status == 'ready' %}
+      <form method="post" action="{{ url_for('kitchen_update_order', order_id=order.id) }}">
+        <input type="hidden" name="status" value="delivered">
+        <button class="btn btn-secondary"><i class="bi bi-bag-check"></i> Mark Delivered</button>
+      </form>
+      {% endif %}
+      <a href="{{ url_for('kitchen_print_order', order_id=order.id) }}" class="btn btn-outline-dark" target="_blank">
+        <i class="bi bi-printer"></i> Print
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

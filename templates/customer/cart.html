@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Your Cart – Goody{% endblock %}
+
+{% block content %}
+<h2 class="fw-bold mb-4"><i class="bi bi-cart3"></i> Your Cart</h2>
+
+<div id="cartEmpty" class="text-center py-5 d-none">
+  <div class="fs-1 mb-3">🛒</div>
+  <h4 class="text-muted">Your cart is empty</h4>
+  <a href="{{ url_for('customer_menu') }}" class="btn btn-brand mt-3">
+    <i class="bi bi-arrow-left"></i> Back to Menu
+  </a>
+</div>
+
+<div id="cartContents">
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0" id="cartTable">
+            <thead class="table-light">
+              <tr>
+                <th>Item</th>
+                <th class="text-center">Qty</th>
+                <th class="text-end">Price</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="cartBody"></tbody>
+            <tfoot>
+              <tr class="table-light fw-bold">
+                <td colspan="2">Total</td>
+                <td class="text-end text-brand" id="cartTotal">$0.00</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="mt-3">
+        <button class="btn btn-outline-danger btn-sm" onclick="clearCart()">
+          <i class="bi bi-trash"></i> Clear Cart
+        </button>
+        <a href="{{ url_for('customer_menu') }}" class="btn btn-outline-secondary btn-sm ms-2">
+          <i class="bi bi-plus"></i> Add More Items
+        </a>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-header bg-brand text-white fw-bold">
+          <i class="bi bi-receipt"></i> Place Order
+        </div>
+        <div class="card-body">
+          <form id="orderForm">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Your Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="customerName" required
+                value="{{ current_user.name if current_user.is_authenticated else '' }}"
+                placeholder="Full Name" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Email (for confirmation)</label>
+              <input type="email" class="form-control" id="customerEmail"
+                value="{{ current_user.email if current_user.is_authenticated else '' }}"
+                placeholder="you@example.com" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Phone (for WhatsApp updates)</label>
+              <input type="tel" class="form-control" id="customerPhone"
+                value="{{ current_user.phone if current_user.is_authenticated and current_user.phone else '' }}"
+                placeholder="+1 234 567 8900" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Special Notes</label>
+              <textarea class="form-control" id="orderNotes" rows="2"
+                placeholder="Allergies, special requests..."></textarea>
+            </div>
+            <div class="d-grid">
+              <button type="submit" class="btn btn-brand btn-lg">
+                <i class="bi bi-check-circle"></i> Place Order
+                <span class="fw-bold ms-2" id="orderTotalBtn"></span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/customer.js') }}"></script>
+<script>
+  function renderCart() {
+    const cart = getCart();
+    const body = document.getElementById('cartBody');
+    const total = cart.reduce((s,i) => s + i.price * i.qty, 0);
+
+    if (cart.length === 0) {
+      document.getElementById('cartEmpty').classList.remove('d-none');
+      document.getElementById('cartContents').classList.add('d-none');
+      return;
+    }
+    document.getElementById('cartEmpty').classList.add('d-none');
+    document.getElementById('cartContents').classList.remove('d-none');
+
+    body.innerHTML = cart.map(item => `
+      <tr>
+        <td>${item.name}</td>
+        <td class="text-center">
+          <div class="input-group input-group-sm" style="width:90px;margin:auto">
+            <button class="btn btn-outline-secondary" onclick="changeQty(${item.id}, -1)">-</button>
+            <span class="input-group-text">${item.qty}</span>
+            <button class="btn btn-outline-secondary" onclick="changeQty(${item.id}, 1)">+</button>
+          </div>
+        </td>
+        <td class="text-end">$${(item.price * item.qty).toFixed(2)}</td>
+        <td><button class="btn btn-link text-danger btn-sm p-0" onclick="removeFromCart(${item.id})"><i class="bi bi-x-lg"></i></button></td>
+      </tr>
+    `).join('');
+
+    document.getElementById('cartTotal').textContent = '$' + total.toFixed(2);
+    document.getElementById('orderTotalBtn').textContent = '– $' + total.toFixed(2);
+  }
+
+  function changeQty(id, delta) {
+    let cart = getCart();
+    const idx = cart.findIndex(i => i.id === id);
+    if (idx >= 0) {
+      cart[idx].qty = Math.max(1, cart[idx].qty + delta);
+      saveCart(cart);
+      renderCart();
+      updateCartBadge();
+    }
+  }
+
+  function removeFromCart(id) {
+    let cart = getCart().filter(i => i.id !== id);
+    saveCart(cart);
+    renderCart();
+    updateCartBadge();
+  }
+
+  function clearCart() {
+    if (confirm('Clear your cart?')) {
+      saveCart([]);
+      renderCart();
+      updateCartBadge();
+    }
+  }
+
+  document.getElementById('orderForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const cart = getCart();
+    if (!cart.length) return;
+    const name = document.getElementById('customerName').value.trim();
+    if (!name) { alert('Please enter your name.'); return; }
+
+    const btn = this.querySelector('[type=submit]');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Placing...';
+
+    const payload = {
+      customer_name: name,
+      customer_email: document.getElementById('customerEmail').value.trim(),
+      customer_phone: document.getElementById('customerPhone').value.trim(),
+      notes: document.getElementById('orderNotes').value.trim(),
+      items: cart.map(i => ({id: i.id, name: i.name, price: i.price, qty: i.qty})),
+    };
+
+    try {
+      const res = await fetch('/place-order', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        saveCart([]);
+        window.location.href = '/order/' + data.order_number;
+      } else {
+        alert('Error: ' + (data.error || 'Unknown error'));
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle"></i> Place Order';
+      }
+    } catch(err) {
+      alert('Network error. Please try again.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle"></i> Place Order';
+    }
+  });
+
+  renderCart();
+</script>
+{% endblock %}

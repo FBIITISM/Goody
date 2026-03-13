@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Analytics – Admin{% endblock %}
+
+{% block content %}
+<h2 class="fw-bold mb-4"><i class="bi bi-bar-chart"></i> Analytics</h2>
+
+<div class="row g-4">
+  <!-- Last 7 Days Revenue -->
+  <div class="col-md-8">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">📈 Last 7 Days</div>
+      <div class="card-body">
+        {% if daily %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover">
+            <thead class="table-light"><tr><th>Date</th><th>Orders</th><th>Revenue</th></tr></thead>
+            <tbody>
+              {% for row in daily %}
+              <tr>
+                <td>{{ row.day }}</td>
+                <td>{{ row.cnt }}</td>
+                <td><strong>${{ "%.2f"|format(row.rev or 0) }}</strong></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <!-- Simple bar chart with CSS -->
+        <div class="mt-3">
+          {% set max_rev = daily|map(attribute='rev')|select|list|max if daily else 1 %}
+          {% for row in daily %}
+          <div class="d-flex align-items-center mb-1 small">
+            <span style="width:80px" class="text-muted">{{ row.day[-5:] }}</span>
+            <div class="bg-brand rounded" style="height:18px;width:{{ [((row.rev or 0) / (max_rev or 1) * 200)|int, 4]|max }}px;"></div>
+            <span class="ms-2">${{ "%.2f"|format(row.rev or 0) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-3">No orders in the last 7 days.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Status Breakdown -->
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">📊 Order Status</div>
+      <div class="card-body">
+        {% set status_colors = {'received': 'info', 'preparing': 'warning', 'ready': 'success', 'delivered': 'secondary'} %}
+        {% for row in statuses %}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="badge bg-{{ status_colors.get(row.status, 'secondary') }} text-capitalize">{{ row.status }}</span>
+          <strong>{{ row.cnt }}</strong>
+        </div>
+        {% endfor %}
+        {% if not statuses %}<p class="text-muted text-center">No data yet.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Items -->
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">🏆 Top 10 Items</div>
+      <div class="card-body">
+        {% if top_items %}
+        {% set max_qty = top_items[0][1] if top_items else 1 %}
+        {% for name, qty in top_items %}
+        <div class="d-flex align-items-center mb-2">
+          <span style="width:200px" class="text-truncate me-2 small fw-semibold">{{ loop.index }}. {{ name }}</span>
+          <div class="flex-fill bg-light rounded" style="height:20px;overflow:hidden;">
+            <div class="bg-brand rounded" style="height:100%;width:{{ (qty / max_qty * 100)|int }}%;"></div>
+          </div>
+          <span class="ms-2 small">{{ qty }}</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center py-3">No orders yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

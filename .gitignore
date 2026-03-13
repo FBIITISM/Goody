@@ -1,0 +1,13 @@
+.env
+*.db
+__pycache__/
+*.py[cod]
+*.pyo
+instance/
+.venv/
+venv/
+env/
+static/qr_codes/
+*.log
+.DS_Store
+Thumbs.db
